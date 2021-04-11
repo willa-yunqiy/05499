@@ -1,6 +1,6 @@
 # How to set up Arduino for Lilypad USB
 
-## Set up board 
+## Connect lilypad and set up board 
 ![IMG_3239](https://user-images.githubusercontent.com/72460026/114313637-35655400-9ac5-11eb-9b05-33df43900e0c.jpg)
 
 ## Set up port
