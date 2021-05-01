@@ -8,7 +8,7 @@
 7. Click "START" button to start logging the data.
 8. Click "SAVECSV" button to export logged data ``data/resistances.csv``
 9. run ``jupyter-notebook`` in ``sketch_05499Knit`` directory
-10. open ``dataProcessing.ipynb`` in ``jupyter-notebook``
+10. open ``dataProcessing.ipynb`` in jupyter-notebook server
 11. play with the filters and your data.
 
 # How to set up Arduino for Lilypad USB
