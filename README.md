@@ -1,3 +1,16 @@
+# How to use sketch_05499Knit
+1. Open arduino IDE: File -> Examples -> Firmata -> StandardFirmata and upload the example code to your arduino.
+2. Open ``sketch_05499Knit/sketch_05499Knit.pde`` in processing IDE
+3. Uncomment ``//println(Arduino.list());`` in ``setup()`` and run the code
+4. Replace 2 in the next line with with your arduino board in the printed ``Arduino.list()``
+5. A0 is used for the analog pin, so connect your sensor and resistor properly to A0.
+6. Run ``sketch_05499Knit/sketch_05499Knit.pde``.
+7. Click "START" button to start logging the data.
+8. Click "SAVECSV" button to export logged data ``data/resistances.csv``
+9. run ``jupyter-notebook`` in ``sketch_05499Knit`` directory
+10. open ``dataProcessing.ipynb`` in ``jupyter-notebook``
+11. play with the filters and your data.
+
 # How to set up Arduino for Lilypad USB
 
 ## Connect lilypad and set up board 
