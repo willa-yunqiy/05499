@@ -11,24 +11,27 @@ float R1 = 10;
 float Rbuff = 0;
 float dataRangeLow = 5;
 float dataRangeHigh = 15;
-/* =============  parameters to check/tune for ============= */
+/* ========================================================= */
 
+// constants
 int[] sensorColors = {color(80, 190, 255), color(246, 80, 255), color(255, 229, 80), color(118, 255, 80)};
 int bg_color = color(100, 100, 100);
 int bg_w = 800;
 int bg_height = 500;
 int graph_height = bg_height/sensorsNum;
 int graph_width = 500;
+int[] fitlerCoeff = {1, 2, 3};
 
-Arduino arduino;
-ControlP5 cp5;
-
-Table resistances;
-
+// variables
 int x_coord = 0;
 int data_num = 0;
 boolean start = false;
- 
+
+Arduino arduino;
+ControlP5 cp5;
+Table resistances;
+Table filteredR;
+
  void setup()
 {
   println(Arduino.list());
@@ -49,6 +52,10 @@ boolean start = false;
   for (int i=0; i<sensorsNum; i++) {
     resistances.addColumn("resistance"+i);
   }
+  filteredR = new Table();
+  for (int i=0; i<sensorsNum; i++) {
+    filteredR.addColumn("resistance"+i);
+  }
 }
 
 void draw()
@@ -57,18 +64,42 @@ void draw()
       println("inside start");
       processData();
       for (int i=0; i<sensorsNum; i++) {
-        drawTable(resistances, i, 0, i*graph_height, graph_width, (i+1)*graph_height, dataRangeLow, dataRangeHigh, color(80, 190, 255));
+        drawTable(resistances, i, 0, i*graph_height, graph_width, (i+1)*graph_height, 
+          dataRangeLow, dataRangeHigh, sensorColors[i]);
+        drawTable(filteredR, i, 0, i*graph_height, graph_width, (i+1)*graph_height, 
+          dataRangeLow, dataRangeHigh, 0);
       }
   }
 }
 
 void processData() {
+  float r;
   TableRow newRow = resistances.addRow();
+  TableRow newFRow = filteredR.addRow();
+
   for (int i=0; i<sensorsNum; i++) {
-    newRow.setFloat("resistance"+i, readResistance(sensorPin[i]));
+    r = readResistance(sensorPin[i]);
+    newRow.setFloat("resistance"+i, r);
+    print(lowPassFilter(resistances, i, fitlerCoeff)/6);
+    newFRow.setFloat("resistance"+i, lowPassFilter(resistances, i, fitlerCoeff)/6);
   }
+
   data_num++;
   x_coord++;
+}
+
+float lowPassFilter(Table data, int col, int[] coeff) {
+  if (data_num == 0) return 0;
+  if (data_num == 1) {
+    return coeff[0]*data.getRow(data_num-1).getFloat("resistance"+col);
+  }
+  if (data_num == 2) {
+    return coeff[0]*data.getRow(data_num-1).getFloat("resistance"+col)
+      + coeff[1]*data.getRow(data_num-2).getFloat("resistance"+col);
+  }
+  return coeff[0]*data.getRow(data_num-1).getFloat("resistance"+col)
+    + coeff[1]*data.getRow(data_num-2).getFloat("resistance"+col)
+    + coeff[2]*data.getRow(data_num-3).getFloat("resistance"+col);
 }
 
 float readResistance(int sensorPin) {
@@ -97,14 +128,17 @@ public void pause() {
   start = false;
   TableRow newRow1 = resistances.addRow();
   TableRow newRow2 = resistances.addRow();
+  TableRow newFRow1 = filteredR.addRow();
+  TableRow newFRow2 = filteredR.addRow();
     for (int i=0; i<sensorsNum; i++) {
     newRow1.setFloat("resistance"+i, 0);
     newRow2.setFloat("resistance"+i, 0);
+    newFRow1.setFloat("resistance"+i, 0);
+    newFRow1.setFloat("resistance"+i, 0);
   }
 }
 
 float y_coord(float val, float y_lo, float y_hi, float r_hi, float r_lo) {
-  println(y_lo-(val-r_lo)/(r_hi-r_lo)*(y_lo-y_hi));
   return y_lo-(r_hi-val)/(r_hi-r_lo)*(y_lo-y_hi);
 }
 
