@@ -46,7 +46,7 @@ void draw()
   if (start) {
       println("inside start");
       processData();
-      drawTable(resistances, 0, 0, 600, 300, 50, color(80, 190, 255));
+      drawTable(resistances, 0, 0, 600, 300, 50, 150, color(80, 190, 255));
   }
 }
 
@@ -89,11 +89,11 @@ public void pause() {
   newRow2.setFloat("resistance", 0);
 }
 
-float y_coord(float val, float y_lo, float y_hi, int r_hi, int r_lo) {
+float y_coord(float val, float y_lo, float y_hi, float r_hi, float r_lo) {
   return y_lo-(val-r_lo)/(r_hi-r_lo)*(y_lo-y_hi);
 }
 
-void drawTable(Table table, float x0, float y0, float x1, float y1, float scale, color c) { 
+void drawTable(Table table, float x0, float y0, float x1, float y1, float r_hi, float r_lo, color c) { 
   if (x_coord > x1) {
     background(bg_color);
     x_coord = 0;  
@@ -107,14 +107,14 @@ void drawTable(Table table, float x0, float y0, float x1, float y1, float scale,
     strokeWeight(1);
     if (x_coord < 2) {
       stroke(c);
-      point(x_coord, y_coord(table.getRow(data_num-1).getFloat("resistance4") - 15, y1, y0, 14, 8));
+      point(x_coord, y_coord(table.getRow(data_num-1).getFloat("resistance4"), y1, y0, r_hi, r_lo));
     }
     else {
       int prev_x_coord = x_coord-1;
-      float curr_r = table.getRow(data_num-1).getFloat("resistance4") - 15;
-      float prev_r = table.getRow(data_num-2).getFloat("resistance4") - 15;
+      float curr_r = table.getRow(data_num-1).getFloat("resistance4");
+      float prev_r = table.getRow(data_num-2).getFloat("resistance4");
       stroke(c);
-      line(x_coord, y_coord(curr_r, y1, y0, 14, 8), prev_x_coord, y_coord(prev_r, y1, y0, 14, 8));
+      line(x_coord, y_coord(curr_r, y1, y0, 14, 8), prev_x_coord, y_coord(prev_r, y1, y0, r_hi, r_lo));
     }
   }
 }
