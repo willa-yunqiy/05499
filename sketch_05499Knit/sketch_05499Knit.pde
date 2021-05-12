@@ -14,7 +14,8 @@ float dataRangeHigh = 15;
 int diffMultiplier = 100;
 int meanfilterSize = 10;
 int medianfilterSize = 100;
-float downUpThreshold = 0.5;
+float[] downThreshold = {0.5, 0.5, 0.5};
+float[] upThreshold = {0.5, 0.5, 0.5};
 /* ========================================================= */
 
 // constants
@@ -113,16 +114,16 @@ void draw()
       processData();
       for (int i=0; i<sensorsNum; i++) {
         // drawTable(resistances, i, 0, i*graph_height, graph_width, (i+1)*graph_height, 
-        //   dataRangeLow, dataRangeHigh, pressedDownColors[i]);
+        //   dataRangeLow, dataRangeHigh, pressedDownColors[i]); 
         // drawTable(filteredR, i, 0, i*graph_height, graph_width, (i+1)*graph_height, 
         //   dataRangeLow, dataRangeHigh, 0);
-        // drawTable(diffFilteredR, i, 0, i*graph_height, graph_width, (i+1)*graph_height, 
-        //   -10, 10, 128);
+        drawTable(diffFilteredR, i, 0, i*graph_height, graph_width, (i+1)*graph_height, 
+          -10, 10, pressedDownColors[i]); //128
         drawTable(mdfR, i, 0, i*graph_height, graph_width, (i+1)*graph_height, 
           -10, 10, 255);
         drawTable(mmdfR, i, 0, i*graph_height, graph_width, (i+1)*graph_height, 
           -10, 10, 64);
-        int dirChange = checkDir(mdfR, mmdfR, i, downUpThreshold);
+        int dirChange = checkDir(mdfR, mmdfR, i);
         if (dirChange == TURNDOWN){
           stroke(255);
           strokeWeight(2);
@@ -147,7 +148,8 @@ void drawPressVis() {
       sensorState[i] = DOWN;
     }
     else if (sensorState[i] == MID && sensorChange[i] == TURNUP){
-      sensorState[i] = UP;
+      // sensorState[i] = UP;
+      sensorState[i] = MID;
     }
     else if (sensorState[i] == DOWN && sensorChange[i] == TURNUP){
       sensorState[i] = MID;
@@ -186,15 +188,15 @@ void processData() {
   x_coord++;
 }
 
-int checkDir(Table data, Table mean, int col, float threshold){
+int checkDir(Table data, Table mean, int col){
   float d =  data.getRow(data_num-1).getFloat("resistance"+col);
   float m =  mean.getRow(data_num-1).getFloat("resistance"+col);
   int dir;
   
-  if (d+threshold < m) { // check if its up
+  if (d+downThreshold[col] < m) { // check if its up
     dir = DOWN;
   }
-  else if (d-threshold > m) { // check if its up
+  else if (d-upThreshold[col] > m) { // check if its up
     dir = UP;
   }
   else {
