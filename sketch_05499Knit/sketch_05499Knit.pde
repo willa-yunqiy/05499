@@ -339,7 +339,7 @@ public void pause() {
   }
 }
 
-public void resetIndicators() {
+public void reset() {
   for (int i=0; i<sensorsNum; i++) {
     isUp[i] = false;
     isDown[i] = false;
