@@ -72,6 +72,7 @@ void setup()
   cp5.addButton("saveCsv").setValue(0).setPosition(780,830).setSize(100,50).setColorBackground(300);
   cp5.addButton("start").setValue(0).setPosition(780,710).setSize(100,50).setColorBackground(300);
   cp5.addButton("pause").setValue(0).setPosition(780,770).setSize(100,50).setColorBackground(300);
+  cp5.addButton("reset").setValue(0).setPosition(780,650).setSize(100,50).setColorBackground(300);
   
   resistances = new Table();
   for (int i=0; i<sensorsNum; i++) {
@@ -316,6 +317,15 @@ public void pause() {
     newMRow2.setFloat("resistance"+i, 0);
     newMMRow1.setFloat("resistance"+i, 0);
     newMMRow2.setFloat("resistance"+i, 0);
+  }
+}
+
+public void resetIndicators() {
+  for (int i=0; i<sensorsNum; i++) {
+    isUp[i] = false;
+    isDown[i] = false;
+    sensorState[i] = MID;
+    sensorChange[i] = NOCHANGE;
   }
 }
 
