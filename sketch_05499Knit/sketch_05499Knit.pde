@@ -5,22 +5,38 @@ import controlP5.*;
 /* =============  parameters to check/tune for ============= */
 int port = 2; // replace 2 with your arduino board in Arduino.list()
 int sensorsNum = 1; // number of sensors
-int[] sensorPin = {0, 5};
+int[] sensorPin = {0, 1, 2, 3};
 float voltage = 5;
 float R1 = 10;
 float Rbuff = 0;
 float dataRangeLow = 5;
 float dataRangeHigh = 15;
+int diffMultiplier = 100;
+int meanfilterSize = 10;
+int medianfilterSize = 100;
+float downUpThreshold = 0.5;
 /* ========================================================= */
 
 // constants
-int[] sensorColors = {color(80, 190, 255), color(246, 80, 255), color(255, 229, 80), color(118, 255, 80)};
+int[] neutralColors = {color(6, 76, 117), color(111, 1, 117), color(128, 109, 0), color(20, 92, 0)};
+int[] pressedDownColors = {color(80, 190, 255), color(246, 80, 255), color(255, 229, 80), color(118, 255, 80)};
+int[] pressedUpColors = {color(214, 240, 255), color(253, 207, 255), color(255, 245, 191), color(207, 255, 194)};
 int bg_color = color(100, 100, 100);
-int bg_w = 800;
-int bg_height = 500;
-int graph_height = bg_height/sensorsNum;
-int graph_width = 500;
-int[] fitlerCoeff = {1, 2, 3};
+int bg_w = 900;
+int bg_h = 900;
+int graph_height = bg_h/sensorsNum;
+int graph_width = bg_w/9*6;
+int ind_height = 100;
+int ind_gap = 20;
+int ind_width = (bg_w - graph_width - ind_gap*(sensorsNum+1))/sensorsNum;
+int[] fitlerCoeff = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15};
+final int UP = 0;
+final int MID = 1;
+final int DOWN = 2;
+final int TURNUP = 0;
+final int TURNMID = 1;
+final int TURNDOWN = 2;
+final int NOCHANGE = 3;
 
 // variables
 int x_coord = 0;
@@ -31,8 +47,16 @@ Arduino arduino;
 ControlP5 cp5;
 Table resistances;
 Table filteredR;
+Table diffFilteredR;
+Table mdfR; // mean of difference of lowpass filtered resistance
+Table mmdfR; // median of mean of difference of lowpass filtered resistance
+FloatList median_list;
+boolean[] isUp;
+boolean[] isDown;
+int[] sensorChange;
+int[] sensorState;
 
- void setup()
+void setup()
 {
   println(Arduino.list());
   arduino = new Arduino(this, Arduino.list()[port], 57600);
@@ -40,13 +64,13 @@ Table filteredR;
     arduino.pinMode(sensorPin[i], Arduino.INPUT);
   }
   
-  size(800,500);
+  size(900,900);
   background(bg_color);
   noStroke();
   cp5 = new ControlP5(this);
-  cp5.addButton("saveCsv").setValue(0).setPosition(680,430).setSize(100,50).setColorBackground(300);
-  cp5.addButton("start").setValue(0).setPosition(680,310).setSize(100,50).setColorBackground(300);
-  cp5.addButton("pause").setValue(0).setPosition(680,370).setSize(100,50).setColorBackground(300);
+  cp5.addButton("saveCsv").setValue(0).setPosition(780,830).setSize(100,50).setColorBackground(300);
+  cp5.addButton("start").setValue(0).setPosition(780,710).setSize(100,50).setColorBackground(300);
+  cp5.addButton("pause").setValue(0).setPosition(780,770).setSize(100,50).setColorBackground(300);
   
   resistances = new Table();
   for (int i=0; i<sensorsNum; i++) {
@@ -56,6 +80,30 @@ Table filteredR;
   for (int i=0; i<sensorsNum; i++) {
     filteredR.addColumn("resistance"+i);
   }
+  diffFilteredR = new Table();
+  for (int i=0; i<sensorsNum; i++) {
+    diffFilteredR.addColumn("resistance"+i);
+  }
+  mdfR = new Table();
+  for (int i=0; i<sensorsNum; i++) {
+    mdfR.addColumn("resistance"+i);
+  }
+  mmdfR = new Table();
+  for (int i=0; i<sensorsNum; i++) {
+    mmdfR.addColumn("resistance"+i);
+  }
+
+  median_list = new FloatList();
+  isUp = new boolean[sensorsNum];
+  isDown = new boolean[sensorsNum];
+  sensorState = new int[sensorsNum];
+  sensorChange = new int[sensorsNum];
+  for (int i=0; i<sensorsNum; i++) {
+    isUp[i] = false;
+    isDown[i] = false;
+    sensorState[i] = MID;
+    sensorChange[i] = NOCHANGE;
+  }
 }
 
 void draw()
@@ -64,11 +112,54 @@ void draw()
       println("inside start");
       processData();
       for (int i=0; i<sensorsNum; i++) {
-        drawTable(resistances, i, 0, i*graph_height, graph_width, (i+1)*graph_height, 
-          dataRangeLow, dataRangeHigh, sensorColors[i]);
-        drawTable(filteredR, i, 0, i*graph_height, graph_width, (i+1)*graph_height, 
-          dataRangeLow, dataRangeHigh, 0);
+        // drawTable(resistances, i, 0, i*graph_height, graph_width, (i+1)*graph_height, 
+        //   dataRangeLow, dataRangeHigh, pressedDownColors[i]);
+        // drawTable(filteredR, i, 0, i*graph_height, graph_width, (i+1)*graph_height, 
+        //   dataRangeLow, dataRangeHigh, 0);
+        // drawTable(diffFilteredR, i, 0, i*graph_height, graph_width, (i+1)*graph_height, 
+        //   -10, 10, 128);
+        drawTable(mdfR, i, 0, i*graph_height, graph_width, (i+1)*graph_height, 
+          -10, 10, 255);
+        drawTable(mmdfR, i, 0, i*graph_height, graph_width, (i+1)*graph_height, 
+          -10, 10, 64);
+        int dirChange = checkDir(mdfR, mmdfR, i, downUpThreshold);
+        if (dirChange == TURNDOWN){
+          stroke(255);
+          strokeWeight(2);
+          line(x_coord, i*graph_height, x_coord, (i+1)*graph_height); // line
+        }
+        if (dirChange == TURNUP){
+          stroke(0);
+          strokeWeight(2);
+          line(x_coord, i*graph_height, x_coord, (i+1)*graph_height); // line
+        }
       }
+  }
+  drawPressVis();
+}
+
+void drawPressVis() {
+  int leftPad = graph_width + ind_gap;
+  strokeWeight(0);
+  for (int i = 0; i< sensorsNum; i++) {
+    fill(neutralColors[i]);
+    if (sensorState[i] == MID && sensorChange[i] == TURNDOWN){
+      sensorState[i] = DOWN;
+    }
+    else if (sensorState[i] == MID && sensorChange[i] == TURNUP){
+      sensorState[i] = UP;
+    }
+    else if (sensorState[i] == DOWN && sensorChange[i] == TURNUP){
+      sensorState[i] = MID;
+    }
+    else if (sensorState[i] == UP && sensorChange[i] == TURNDOWN){
+      sensorState[i] = MID;
+    }
+
+    if (sensorState[i] == DOWN) fill(pressedDownColors[i]);
+    if (sensorState[i] == UP) fill(pressedUpColors[i]);
+    if (sensorState[i] == MID) fill(neutralColors[i]);
+    rect(leftPad+i*(ind_gap+ind_width), ind_gap, ind_width, ind_height);
   }
 }
 
@@ -76,31 +167,107 @@ void processData() {
   float r;
   TableRow newRow = resistances.addRow();
   TableRow newFRow = filteredR.addRow();
+  TableRow newDRow = diffFilteredR.addRow();
+  TableRow newMRow = mdfR.addRow();
+  TableRow newMMRow = mmdfR.addRow();
 
   for (int i=0; i<sensorsNum; i++) {
     r = readResistance(sensorPin[i]);
     newRow.setFloat("resistance"+i, r);
-    print(lowPassFilter(resistances, i, fitlerCoeff)/6);
-    newFRow.setFloat("resistance"+i, lowPassFilter(resistances, i, fitlerCoeff)/6);
+    // print(lowPassFilter(resistances, i, fitlerCoeff));
+    newFRow.setFloat("resistance"+i, lowPassFilter(resistances, i, fitlerCoeff));
+    // print(diffMultiplier*diff(filteredR, i));
+    newDRow.setFloat("resistance"+i, diffMultiplier*diff(filteredR, i));
+    newMRow.setFloat("resistance"+i, meanFilter(diffFilteredR, meanfilterSize,i));
+    newMMRow.setFloat("resistance"+i, medianFilter(mdfR, medianfilterSize,i));
   }
 
   data_num++;
   x_coord++;
 }
 
+int checkDir(Table data, Table mean, int col, float threshold){
+  float d =  data.getRow(data_num-1).getFloat("resistance"+col);
+  float m =  mean.getRow(data_num-1).getFloat("resistance"+col);
+  int dir;
+  
+  if (d+threshold < m) { // check if its up
+    dir = DOWN;
+  }
+  else if (d-threshold > m) { // check if its up
+    dir = UP;
+  }
+  else {
+    dir = MID;
+  }
+  if (dir == UP && !isUp[col]){
+    isUp[col] = true;
+    isDown[col] = false;
+    sensorChange[col] = TURNUP;
+    return TURNUP;
+  } 
+  if (dir == DOWN && !isDown[col]){
+    isUp[col] = false;
+    isDown[col] = true;
+    sensorChange[col] = TURNDOWN;
+    return TURNDOWN;
+  } 
+  if (dir == MID && (isUp[col] || isDown[col])) {
+    isUp[col] = false;
+    isDown[col] = false;
+    sensorChange[col] = TURNMID;
+    return TURNMID;
+  } 
+  sensorChange[col] = NOCHANGE;
+  return NOCHANGE;
+}
+
 float lowPassFilter(Table data, int col, int[] coeff) {
   if (data_num == 0) return 0;
-  if (data_num == 1) {
-    return coeff[0]*data.getRow(data_num-1).getFloat("resistance"+col);
+  int l = coeff.length;
+  float res = 0;
+  float div = 0;
+  int windowL = min(l, data_num);
+  for (int i=0; i<windowL; i++) {
+    res += coeff[i]*data.getRow(data_num-1-i).getFloat("resistance"+col);
+    div += coeff[i];
   }
-  if (data_num == 2) {
-    return coeff[0]*data.getRow(data_num-1).getFloat("resistance"+col)
-      + coeff[1]*data.getRow(data_num-2).getFloat("resistance"+col);
-  }
-  return coeff[0]*data.getRow(data_num-1).getFloat("resistance"+col)
-    + coeff[1]*data.getRow(data_num-2).getFloat("resistance"+col)
-    + coeff[2]*data.getRow(data_num-3).getFloat("resistance"+col);
+  return res/div;
 }
+
+float diff(Table data, int col) {
+  if (data_num == 0) return 0;
+  if (data_num == 1) return data.getRow(data_num-1).getFloat("resistance"+col);
+  return data.getRow(data_num-1).getFloat("resistance"+col)-data.getRow(data_num-2).getFloat("resistance"+col);
+}
+
+float meanFilter(Table data, int size, int col) {
+  float res = 0;
+  int arr_len = data_num < size ? data_num : size;
+  for (int i = data_num-1; i >= data_num - arr_len; i--){
+    res += data.getRow(i).getFloat("resistance"+col);
+  }
+  return res/arr_len;
+}
+
+float medianFilter(Table data, int size, int col) {
+  if (data_num == 0) return 0;
+  float res;
+  int arr_len = data_num < size ? data_num : size;
+  for (int i = data_num-1; i >= data_num - arr_len; i--){
+    median_list.append(data.getRow(i).getFloat("resistance"+col));
+  }
+  median_list.sort();
+  if (arr_len % 2 == 0){
+    res = (median_list.get(arr_len/2)+median_list.get(arr_len/2-1))/2;
+  }
+  else {
+    res = median_list.get(arr_len/2);
+  }
+  median_list.clear();
+  return res;
+}
+
 
 float readResistance(int sensorPin) {
   float raw = arduino.analogRead(sensorPin);
@@ -130,11 +297,23 @@ public void pause() {
   TableRow newRow2 = resistances.addRow();
   TableRow newFRow1 = filteredR.addRow();
   TableRow newFRow2 = filteredR.addRow();
-    for (int i=0; i<sensorsNum; i++) {
+  TableRow newDRow1 = diffFilteredR.addRow();
+  TableRow newDRow2 = diffFilteredR.addRow();
+  TableRow newMRow1 = mdfR.addRow();
+  TableRow newMRow2 = mdfR.addRow();
+  TableRow newMMRow1 = mmdfR.addRow();
+  TableRow newMMRow2 = mmdfR.addRow();
+  for (int i=0; i<sensorsNum; i++) {
     newRow1.setFloat("resistance"+i, 0);
     newRow2.setFloat("resistance"+i, 0);
     newFRow1.setFloat("resistance"+i, 0);
-    newFRow1.setFloat("resistance"+i, 0);
+    newFRow2.setFloat("resistance"+i, 0);
+    newDRow1.setFloat("resistance"+i, 0);
+    newDRow2.setFloat("resistance"+i, 0);
+    newMRow1.setFloat("resistance"+i, 0);
+    newMRow2.setFloat("resistance"+i, 0);
+    newMMRow1.setFloat("resistance"+i, 0);
+    newMMRow2.setFloat("resistance"+i, 0);
   }
 }
 
@@ -147,10 +326,6 @@ void drawTable(Table table, int col, float x0, float y0, float x1, float y1, flo
     background(bg_color);
     x_coord = 0;  
   }
-  
-  //stroke(255);
-  //strokeWeight(3);
-  //line(x0, (y0+y1)/2, x1, (y0+y1)/2); // draws the x axis
   
   if (start) {
     strokeWeight(1);
