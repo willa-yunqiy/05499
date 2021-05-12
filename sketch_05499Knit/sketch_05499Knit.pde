@@ -43,6 +43,12 @@ final int NOCHANGE = 3;
 int x_coord = 0;
 int data_num = 0;
 boolean start = false;
+boolean rawValue = false;
+boolean lowPassFilter = false;
+boolean difference = false;
+boolean meanDiff = false;
+boolean medianmeanDiff = false;
+boolean upDownLine = false;
 
 Arduino arduino;
 ControlP5 cp5;
@@ -73,6 +79,12 @@ void setup()
   cp5.addButton("start").setValue(0).setPosition(780,710).setSize(100,50).setColorBackground(300);
   cp5.addButton("pause").setValue(0).setPosition(780,770).setSize(100,50).setColorBackground(300);
   cp5.addButton("reset").setValue(0).setPosition(780,650).setSize(100,50).setColorBackground(300);
+  cp5.addToggle("rawValue").setPosition(800,610).setSize(50,20).setColorBackground(300);
+  cp5.addToggle("lowPassFilter").setPosition(800,570).setSize(50,20).setColorBackground(300);
+  cp5.addToggle("difference").setPosition(800,530).setSize(50,20).setColorBackground(300);
+  cp5.addToggle("meanDiff").setPosition(800,490).setSize(50,20).setColorBackground(300);
+  cp5.addToggle("medianmeanDiff").setPosition(800,450).setSize(50,20).setColorBackground(300);
+  cp5.addToggle("upDownLine").setPosition(800,410).setSize(50,20).setColorBackground(300);
   
   resistances = new Table();
   for (int i=0; i<sensorsNum; i++) {
@@ -114,26 +126,33 @@ void draw()
       println("inside start");
       processData();
       for (int i=0; i<sensorsNum; i++) {
-        // drawTable(resistances, i, 0, i*graph_height, graph_width, (i+1)*graph_height, 
-        //   dataRangeLow, dataRangeHigh, pressedDownColors[i]); 
-        // drawTable(filteredR, i, 0, i*graph_height, graph_width, (i+1)*graph_height, 
-        //   dataRangeLow, dataRangeHigh, 0);
-        drawTable(diffFilteredR, i, 0, i*graph_height, graph_width, (i+1)*graph_height, 
-          -10, 10, pressedDownColors[i]); //128
-        drawTable(mdfR, i, 0, i*graph_height, graph_width, (i+1)*graph_height, 
-          -10, 10, 255);
-        drawTable(mmdfR, i, 0, i*graph_height, graph_width, (i+1)*graph_height, 
-          -10, 10, 64);
+        if (rawValue)
+          drawTable(resistances, i, 0, i*graph_height, graph_width, (i+1)*graph_height, 
+            dataRangeLow, dataRangeHigh, pressedDownColors[i]); 
+        if(lowPassFilter)
+          drawTable(filteredR, i, 0, i*graph_height, graph_width, (i+1)*graph_height, 
+            dataRangeLow, dataRangeHigh, 0);
+        if(difference)
+          drawTable(diffFilteredR, i, 0, i*graph_height, graph_width, (i+1)*graph_height, 
+            -10, 10, pressedDownColors[i]); //128
+        if(meanDiff)
+          drawTable(mdfR, i, 0, i*graph_height, graph_width, (i+1)*graph_height, 
+            -10, 10, 255);
+        if(medianmeanDiff)
+          drawTable(mmdfR, i, 0, i*graph_height, graph_width, (i+1)*graph_height, 
+            -10, 10, 64);
         int dirChange = checkDir(mdfR, mmdfR, i);
-        if (dirChange == TURNDOWN){
-          stroke(255);
-          strokeWeight(2);
-          line(x_coord, i*graph_height, x_coord, (i+1)*graph_height); // line
-        }
-        if (dirChange == TURNUP){
-          stroke(0);
-          strokeWeight(2);
-          line(x_coord, i*graph_height, x_coord, (i+1)*graph_height); // line
+        if(upDownLine){
+          if (dirChange == TURNDOWN){
+            stroke(255);
+            strokeWeight(2);
+            line(x_coord, i*graph_height, x_coord, (i+1)*graph_height); // line
+          }
+          if (dirChange == TURNUP){
+            stroke(0);
+            strokeWeight(2);
+            line(x_coord, i*graph_height, x_coord, (i+1)*graph_height); // line
+          }
         }
       }
   }
