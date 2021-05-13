@@ -314,8 +314,8 @@ void drawPressVis() {
       sensorState[i] = DOWN;
     }
     else if (sensorState[i] == MID && sensorChange[i] == TURNUP){
-      sensorState[i] = UP;
-      // sensorState[i] = MID;
+      // sensorState[i] = UP;
+      sensorState[i] = MID;
     }
     else if (sensorState[i] == DOWN && sensorChange[i] == TURNUP){
       sensorState[i] = MID;
