@@ -35,6 +35,7 @@ final int TURNUP = 0;
 final int TURNMID = 1;
 final int TURNDOWN = 2;
 final int NOCHANGE = 3;
+int onTime = 500;
 int calibrateRestTime = 4000;
 
 // variables
@@ -53,6 +54,7 @@ boolean upDownLine = false;
 boolean thresholds = false;
 float[] downPeaks = {1000.0, 1000.0, 1000.0, 1000.0, 1000.0};
 float[] upPeaks = {-1000.0, -1000.0, -1000.0, -1000.0, -1000.0};
+int[] prevTime = {0 , 0, 0};
 
 Arduino arduino;
 ControlP5 cp5;
@@ -308,6 +310,7 @@ void drawPressVis() {
   for (int i = 0; i< sensorsNum; i++) {
     fill(neutralColors[i]);
     if (sensorState[i] == MID && sensorChange[i] == TURNDOWN){
+      prevTime[i] = millis();
       sensorState[i] = DOWN;
     }
     else if (sensorState[i] == MID && sensorChange[i] == TURNUP){
@@ -318,6 +321,9 @@ void drawPressVis() {
       sensorState[i] = MID;
     }
     else if (sensorState[i] == UP && sensorChange[i] == TURNDOWN){
+      sensorState[i] = MID;
+    }
+    else if (millis()-prevTime[i]>onTime) {
       sensorState[i] = MID;
     }
 
