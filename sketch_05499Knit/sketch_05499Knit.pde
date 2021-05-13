@@ -191,6 +191,7 @@ void calibrate() {
       dataRangeHigh[i] *= 1.2;
     }
     fill(bg_color);
+    stroke(0);
     rect(leftPad, 0, ind_width*(sensorsNum+1), ind_gap+200);
     return;
   }
@@ -210,6 +211,7 @@ void calibrate() {
     text("When white block appears,\ntap down 5 times \nin the next 8 seconds.", leftPad, ind_gap+100);
   }
   else if (currTime-calibrateStartTime < calibrateRestTime*3){
+    stroke(0);
     fill(bg_color);
     rect(leftPad, ind_gap+20, ind_width*(sensorsNum+1), ind_gap+200);
     fill(255, 255 ,255);
