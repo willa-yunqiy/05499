@@ -276,6 +276,9 @@ void calibrate() {
     upThreshold[currCalibrateNum] /= thresholdDivider;
     currCalibrateNum += 1;
     calibrateStartTime = 0;
+    fill(bg_color);
+    stroke(0);
+    rect(leftPad, 0, ind_width*(sensorsNum+1), ind_gap+200);
   }
 }
 
