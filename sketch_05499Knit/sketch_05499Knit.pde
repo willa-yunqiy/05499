@@ -4,7 +4,7 @@ import controlP5.*;
 
 /* =============  parameters to check/tune for ============= */
 int port = 2; // replace 2 with your arduino board in Arduino.list()
-int sensorsNum = 1; // number of sensors
+int sensorsNum = 2; // number of sensors
 int[] sensorPin = {0, 1, 2, 3};
 float voltage = 5;
 float R1 = 10;
@@ -191,7 +191,7 @@ void calibrate() {
       dataRangeHigh[i] *= 1.2;
     }
     fill(bg_color);
-    stroke(0);
+    strokeWeight(0);
     rect(leftPad, 0, ind_width*(sensorsNum+1), ind_gap+200);
     return;
   }
@@ -199,21 +199,25 @@ void calibrate() {
     resetCalibration();
   }
   textSize(32);
+  strokeWeight(0);
   fill(255, 0 ,0);
   text("Calibrating..."+currCalibrateNum+"/"+sensorsNum, leftPad, ind_gap);
 
   int currTime = millis(); 
   if (calibrateStartTime == 0) calibrateStartTime = currTime;
   if (currTime-calibrateStartTime < calibrateRestTime) {
+    strokeWeight(0);
     textSize(26);
     fill(255, 255 ,255);
     text("Hold finger "+currCalibrateNum+"\nstill for 4 seconds.", leftPad, ind_gap+40);
+    strokeWeight(0);
     text("When white block appears,\ntap down 5 times \nin the next 8 seconds.", leftPad, ind_gap+100);
   }
   else if (currTime-calibrateStartTime < calibrateRestTime*3){
-    stroke(0);
+    strokeWeight(0);
     fill(bg_color);
     rect(leftPad, ind_gap+20, ind_width*(sensorsNum+1), ind_gap+200);
+    strokeWeight(0);
     fill(255, 255 ,255);
     rect(leftPad, ind_gap+20, ind_width*sensorsNum, ind_height/2);
     // find highs and lows of raw for drawing range
@@ -277,7 +281,7 @@ void calibrate() {
     currCalibrateNum += 1;
     calibrateStartTime = 0;
     fill(bg_color);
-    stroke(0);
+    strokeWeight(0);
     rect(leftPad, 0, ind_width*(sensorsNum+1), ind_gap+200);
   }
 }
